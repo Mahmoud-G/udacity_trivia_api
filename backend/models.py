@@ -3,8 +3,13 @@ from sqlalchemy import Column, String, Integer, create_engine
 from flask_sqlalchemy import SQLAlchemy
 import json
 
-database_name = "trivia"
-database_path = "postgres://{}/{}".format('localhost:5432', database_name)
+db_name = "trivia"
+db_user = "postgres"
+db_password = "rootP@ssw0rd"
+db_port = "5432"
+db_host = "localhost"
+# database_path = "postgres://{}/{}".format('localhost:5432', database_name)
+database_path = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
 
 db = SQLAlchemy()
 
@@ -55,6 +60,7 @@ class Question(db.Model):
       'question': self.question,
       'answer': self.answer,
       'category': self.category,
+      # 'category_name': self.category.type,
       'difficulty': self.difficulty
     }
 
