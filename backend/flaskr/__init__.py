@@ -5,6 +5,7 @@ from flask_cors import CORS
 import random
 from cerberus import Validator
 from models import setup_db, Question, Category
+from sqlalchemy import func
 
 QUESTIONS_PER_PAGE = 10
 
@@ -255,6 +256,47 @@ def create_app(test_config=None):
   and shown whether they were correct or not. 
   '''
 
+  @app.route('/api/quizzes', methods=['POST'])
+  def quizzes():
+    body = request.get_json()
+    # schema = {'list_of_values': {
+    #                 'type': 'list',
+    #                 'items': [{'type': 'string'}, {'type': 'integer'}]}
+    # }
+    # schema validation
+    schema = {'previous_questions': {'type': ['list'], 'schema': {'type': 'integer'}},
+              'quiz_category': {'type': 'integer', 'required': True, 'minlength': 1}
+    }
+    v = Validator(schema)
+
+    # data formated as dict to validate as cerberus validator
+    request_data = {'previous_questions': body.get('previous_questions', None),
+                    'quiz_category': body.get('quiz_category', None)}
+    print(v.validate(request_data))
+    print(v.errors)
+    if v.validate(request_data):
+      try:
+        query = Question.query.filter(Question.category == request_data['quiz_category'])\
+                              .filter(Question.id.notin_(request_data['previous_questions']))\
+                              .order_by(func.random()).all()
+        paginated_data = pagination(request, query)
+        query_count = len(query)
+
+        return jsonify({
+          'success': True,
+          'data': paginated_data,
+          'count': query_count
+        })
+
+      except Exception as e:
+        print(e)
+        abort(422)
+    else:
+      return jsonify({
+        'success': False,
+        'error': v.errors,
+        'message': 'Validation error.'
+      })
   '''
   @TODO: 
   Create error handlers for all expected errors 
