@@ -228,6 +228,20 @@ def create_app(test_config=None):
   category to be shown. 
   '''
 
+  @app.route('/api/categories/<int:category_id>/questions')
+  def category_question(category_id):
+    query = Question.query.filter(Question.category == category_id).order_by(Question.id).all()
+    query_count = len(query)
+    paginated_data = pagination(request, query, list_per_page=query_count)
+
+    if len(paginated_data) == 0:
+      abort(404)
+
+    return jsonify({
+      'success': True,
+      'data': paginated_data,
+      'count': query_count
+    })
 
   '''
   @TODO: 
