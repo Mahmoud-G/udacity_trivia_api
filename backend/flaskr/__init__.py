@@ -3,7 +3,7 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
-
+from cerberus import Validator
 from models import setup_db, Question, Category
 
 QUESTIONS_PER_PAGE = 10
@@ -98,6 +98,27 @@ def create_app(test_config=None):
   This removal will persist in the database and when you refresh the page. 
   '''
 
+  @app.route('/api/questions/<int:question_id>', methods=['DELETE'])
+  def delete_question(question_id):
+    try:
+      query = Question.query.filter(Question.id == question_id).one_or_none()
+      if query is None:
+        abort(404)
+
+      query.delete()
+      question_query = Question.query.order_by(Question.id).all()
+      paginated_data = pagination(request, question_query)
+      question_query_count = len(question_query)
+
+      return jsonify({
+        'success': True,
+        'deleted': question_id,
+        'data': paginated_data,
+        'count': question_query_count
+      })
+
+    except:
+      abort(422)
   '''
   @TODO: 
   Create an endpoint to POST a new question, 
@@ -108,6 +129,50 @@ def create_app(test_config=None):
   the form will clear and the question will appear at the end of the last page
   of the questions list in the "List" tab.  
   '''
+
+  @app.route('/api/questions', methods=['POST'])
+  def create_question():
+    body = request.get_json()
+
+    # new_question = body.get('question', None)
+    # new_answer = body.get('answer', None)
+    # new_category = body.get('category', None)
+    # new_difficulty = body.get('difficulty', None)
+
+    # schema validation
+    schema = {'question': {'type': 'string', 'required': True, 'minlength': 5},
+              'answer': {'type': 'string', 'required': True, 'minlength': 1},
+              'category': {'type': 'integer', 'required': True, 'minlength': 1},
+              'difficulty': {'type': 'integer', 'required': True, 'minlength': 1}
+              }
+    v = Validator(schema)
+    # data formated as dict to validate as cerberus validator
+    request_data = {'question': body.get('question', None),
+                    'answer': body.get('answer', None),
+                    'category': body.get('category', None),
+                    'difficulty': body.get('difficulty', None)
+                    }
+    # print(v.validate(request_data))
+    # print(v.errors)
+    if v.validate(request_data):
+      try:
+        query = Question(**request_data)
+        query.insert()
+
+        return jsonify({
+          'success': True,
+          'data': query.format(),
+        })
+
+      except Exception as e:
+        print(e)
+        abort(422)
+    else:
+      return jsonify({
+        'success': False,
+        'error': v.errors,
+        'message': 'Validation error.'
+      })
 
   '''
   @TODO: 
@@ -120,6 +185,40 @@ def create_app(test_config=None):
   Try using the word "title" to start. 
   '''
 
+  @app.route('/api/search', methods=['POST'])
+  def search_question():
+    body = request.get_json()
+
+    # schema validation
+    schema = {'search_term': {'type': 'string', 'required': True, 'minlength': 3}}
+    v = Validator(schema)
+
+    # data formated as dict to validate as cerberus validator
+    request_data = {'search_term': body.get('search_term', None)}
+    # print(v.validate(request_data))
+    # print(v.errors)
+    if v.validate(request_data):
+      try:
+        query = Question.query.order_by(Question.id).filter(
+                Question.question.ilike(f'%{request_data["search_term"]}%')).all()
+        paginated_data = pagination(request, query)
+        query_count = len(query)
+
+        return jsonify({
+          'success': True,
+          'data': paginated_data,
+          'count': query_count
+        })
+
+      except Exception as e:
+        print(e)
+        abort(422)
+    else:
+      return jsonify({
+        'success': False,
+        'error': v.errors,
+        'message': 'Validation error.'
+      })
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
@@ -153,7 +252,7 @@ def create_app(test_config=None):
     return jsonify({
       'success': False,
       'error': 404,
-      'message': 'resource not found'
+      'message': 'resource not found.'
     }), 404
 
   @app.errorhandler(422)
@@ -161,10 +260,15 @@ def create_app(test_config=None):
     return jsonify({
       'success': False,
       'error': 422,
-      'message': 'unprocessable'
+      'message': 'unprocessable.'
     }), 422
 
-  
-  return app
+  @app.errorhandler(405)
+  def method_not_allowed(error):
+    return jsonify({
+      'success': False,
+      'error': 405,
+      'message': 'method not allowed.'
+    }), 405
 
-    
+  return app
