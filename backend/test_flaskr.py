@@ -143,6 +143,25 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], False)
         self.assertTrue(data['message'])
 
+    # test category question
+    def test_get_category_question(self):
+        res = self.client().get('/api/categories/1/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertTrue(data['totalQuestions'])
+
+    # test category question with wrong category id
+    def test_get_category_question_invalid_category(self):
+        res = self.client().get('/api/categories/1000/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertTrue(data['message'])
+
     # test quiz
     def test_post_quiz(self):
         res = self.client().post('/api/quizzes', json={"previous_questions": [1, 2, 3],
