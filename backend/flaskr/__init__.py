@@ -13,9 +13,8 @@ def create_app(test_config=None):
   # create and configure the app
   app = Flask(__name__, instance_relative_config=True)
   setup_db(app)
-  app.debug = True
 
-  
+
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
@@ -57,7 +56,7 @@ def create_app(test_config=None):
 
     return jsonify({
       'success': True,
-      'data': paginated_data,
+      'categories': {category.id: category.type for category in query},
       'count': query_count
     })
 
@@ -80,15 +79,18 @@ def create_app(test_config=None):
     category_query = Category.query.order_by(Category.type).all()
     question_query_count = len(question_query)
     question_paginated_data = pagination(request, question_query)
-    data = {'questions': question_paginated_data, 'categories': [category.format() for category in category_query]}
+    # data = {'questions': question_paginated_data, 'categories': {category.id:category.type for category in category_query}}
+    # print(data['categories'])
 
     if len(question_paginated_data) == 0:
       abort(404)
 
     return jsonify({
       'success': True,
-      'data': data,
-      'count': question_query_count
+      'questions': question_paginated_data,
+      'categories': {category.id: category.type for category in category_query},
+      'currentCategory': None,
+      'total_questions': question_query_count
     })
 
   '''
@@ -137,8 +139,13 @@ def create_app(test_config=None):
 
     # new_question = body.get('question', None)
     # new_answer = body.get('answer', None)
-    # new_category = body.get('category', None)
-    # new_difficulty = body.get('difficulty', None)
+
+    # check if the answer and category are integer value
+    try:
+      new_difficulty = int(body.get('difficulty', None))
+      new_category = int(body.get('category', None))
+    except Exception as e:
+      abort(422, {'message': e})
 
     # schema validation
     schema = {'question': {'type': 'string', 'required': True, 'minlength': 5},
@@ -150,8 +157,8 @@ def create_app(test_config=None):
     # data formated as dict to validate as cerberus validator
     request_data = {'question': body.get('question', None),
                     'answer': body.get('answer', None),
-                    'category': body.get('category', None),
-                    'difficulty': body.get('difficulty', None)
+                    'category': new_category,
+                    'difficulty': new_difficulty
                     }
     # print(v.validate(request_data))
     # print(v.errors)
@@ -169,11 +176,8 @@ def create_app(test_config=None):
         print(e)
         abort(422)
     else:
-      return jsonify({
-        'success': False,
-        'error': v.errors,
-        'message': 'Validation error.'
-      })
+      abort(422, {'message': v.errors})
+
 
   '''
   @TODO: 
@@ -195,7 +199,7 @@ def create_app(test_config=None):
     v = Validator(schema)
 
     # data formated as dict to validate as cerberus validator
-    request_data = {'search_term': body.get('search_term', None)}
+    request_data = {'search_term': body.get('searchTerm', None)}
     # print(v.validate(request_data))
     # print(v.errors)
     if v.validate(request_data):
@@ -207,19 +211,18 @@ def create_app(test_config=None):
 
         return jsonify({
           'success': True,
-          'data': paginated_data,
-          'count': query_count
+          'questions': paginated_data,
+          'totalQuestions': query_count,
+          'currentCategory': None
         })
+
 
       except Exception as e:
         print(e)
         abort(422)
     else:
-      return jsonify({
-        'success': False,
-        'error': v.errors,
-        'message': 'Validation error.'
-      })
+      abort(422, {'message': v.errors})
+
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
@@ -240,9 +243,11 @@ def create_app(test_config=None):
 
     return jsonify({
       'success': True,
-      'data': paginated_data,
-      'count': query_count
+      'questions': paginated_data,
+      'totalQuestions': query_count,
+      'currentCategory': category_id
     })
+
 
   '''
   @TODO: 
@@ -259,10 +264,13 @@ def create_app(test_config=None):
   @app.route('/api/quizzes', methods=['POST'])
   def quizzes():
     body = request.get_json()
-    # schema = {'list_of_values': {
-    #                 'type': 'list',
-    #                 'items': [{'type': 'string'}, {'type': 'integer'}]}
-    # }
+
+    try:
+      quiz_category_dict = body.get('quiz_category', None)
+      quiz_category = int(quiz_category_dict['id'])
+    except Exception as e:
+      abort(422)
+
     # schema validation
     schema = {'previous_questions': {'type': ['list'], 'schema': {'type': 'integer'}},
               'quiz_category': {'type': 'integer', 'required': True, 'minlength': 1}
@@ -271,32 +279,30 @@ def create_app(test_config=None):
 
     # data formated as dict to validate as cerberus validator
     request_data = {'previous_questions': body.get('previous_questions', None),
-                    'quiz_category': body.get('quiz_category', None)}
-    print(v.validate(request_data))
-    print(v.errors)
+                    'quiz_category': quiz_category}
+    # print(v.validate(request_data))
+    # print(v.errors)
     if v.validate(request_data):
       try:
         query = Question.query.filter(Question.category == request_data['quiz_category'])\
                               .filter(Question.id.notin_(request_data['previous_questions']))\
-                              .order_by(func.random()).all()
-        paginated_data = pagination(request, query)
-        query_count = len(query)
+                              .order_by(func.random()).first()
+        print(query)
+        # paginated_data = pagination(request, query)
+        # query_count = len(query)
 
         return jsonify({
           'success': True,
-          'data': paginated_data,
-          'count': query_count
+          'question': query.format() if query else None
+          # 'count': query_count
         })
 
       except Exception as e:
         print(e)
         abort(422)
     else:
-      return jsonify({
-        'success': False,
-        'error': v.errors,
-        'message': 'Validation error.'
-      })
+      abort(422, {'message': v.errors})
+
   '''
   @TODO: 
   Create error handlers for all expected errors 
@@ -313,10 +319,11 @@ def create_app(test_config=None):
 
   @app.errorhandler(422)
   def unprocessable(error):
+    message = 'unprocessable.'
     return jsonify({
       'success': False,
       'error': 422,
-      'message': 'unprocessable.'
+      'message': message if error.description['message'] is None else error.description['message']
     }), 422
 
   @app.errorhandler(405)
