@@ -1,8 +1,8 @@
-import os
+
 from flask import Flask, request, abort, jsonify
-from flask_sqlalchemy import SQLAlchemy
+
 from flask_cors import CORS
-import random
+
 from cerberus import Validator
 from models import setup_db, Question, Category
 from sqlalchemy import func
@@ -57,7 +57,7 @@ def create_app(test_config=None):
     return jsonify({
       'success': True,
       'categories': {category.id: category.type for category in query},
-      'count': query_count
+      'total_categories': query_count
     })
 
   '''
@@ -106,7 +106,7 @@ def create_app(test_config=None):
     try:
       query = Question.query.filter(Question.id == question_id).one_or_none()
       if query is None:
-        abort(404)
+        abort(422)
 
       query.delete()
       question_query = Question.query.order_by(Question.id).all()
@@ -116,8 +116,8 @@ def create_app(test_config=None):
       return jsonify({
         'success': True,
         'deleted': question_id,
-        'data': paginated_data,
-        'count': question_query_count
+        'questions': paginated_data,
+        'total_questions': question_query_count
       })
 
     except:
@@ -145,7 +145,7 @@ def create_app(test_config=None):
       new_difficulty = int(body.get('difficulty', None))
       new_category = int(body.get('category', None))
     except Exception as e:
-      abort(422, {'message': e})
+      abort(422, {'message': str(e)})
 
     # schema validation
     schema = {'question': {'type': 'string', 'required': True, 'minlength': 5},
@@ -173,7 +173,7 @@ def create_app(test_config=None):
         })
 
       except Exception as e:
-        print(e)
+        # print(e)
         abort(422)
     else:
       abort(422, {'message': v.errors})
@@ -320,10 +320,14 @@ def create_app(test_config=None):
   @app.errorhandler(422)
   def unprocessable(error):
     message = 'unprocessable.'
+    try:
+      message = error.description['message']
+    except Exception as e:
+      print(e)
     return jsonify({
       'success': False,
       'error': 422,
-      'message': message if error.description['message'] is None else error.description['message']
+      'message': message
     }), 422
 
   @app.errorhandler(405)
@@ -333,5 +337,13 @@ def create_app(test_config=None):
       'error': 405,
       'message': 'method not allowed.'
     }), 405
+
+  @app.errorhandler(400)
+  def bad_request(error):
+    return jsonify({
+      "success": False,
+      "error": 400,
+      "message": "bad request"
+      }), 400
 
   return app
