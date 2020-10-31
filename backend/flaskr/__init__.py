@@ -16,11 +16,11 @@ def create_app(test_config=None):
 
 
   '''
-  @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
+  @Done: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
   CORS(app, resources={r'api/*': {'origins': '*'}})
   '''
-  @TODO: Use the after_request decorator to set Access-Control-Allow
+  @Done: Use the after_request decorator to set Access-Control-Allow
   '''
   @app.after_request
   def after_request(response):
@@ -30,7 +30,7 @@ def create_app(test_config=None):
     return response
 
 # pagination function that list 10 items by default
-  def pagination(request, selection, list_per_page=10):
+  def pagination(selection, list_per_page=10):
     page = request.args.get('page', 1, type=int)
     start = (page - 1) * list_per_page
     end = start + list_per_page
@@ -41,7 +41,7 @@ def create_app(test_config=None):
     return current_items
 
   '''
-  @TODO: 
+  @Done: 
   Create an endpoint to handle GET requests 
   for all available categories.
   '''
@@ -49,7 +49,7 @@ def create_app(test_config=None):
   def retrieve_categories():
     query = Category.query.order_by(Category.type).all()
     query_count = len(query)
-    paginated_data = pagination(request, query, list_per_page=query_count)
+    paginated_data = pagination(query, list_per_page=query_count)
 
     if len(paginated_data) == 0:
       abort(404)
@@ -61,7 +61,7 @@ def create_app(test_config=None):
     })
 
   '''
-  @TODO: 
+  @Done: 
   Create an endpoint to handle GET requests for questions, 
   including pagination (every 10 questions). 
   This endpoint should return a list of questions, 
@@ -78,7 +78,7 @@ def create_app(test_config=None):
     question_query = Question.query.order_by(Question.id).all()
     category_query = Category.query.order_by(Category.type).all()
     question_query_count = len(question_query)
-    question_paginated_data = pagination(request, question_query)
+    question_paginated_data = pagination(question_query)
     # data = {'questions': question_paginated_data, 'categories': {category.id:category.type for category in category_query}}
     # print(data['categories'])
 
@@ -94,7 +94,7 @@ def create_app(test_config=None):
     })
 
   '''
-  @TODO: 
+  @Done: 
   Create an endpoint to DELETE question using a question ID. 
 
   TEST: When you click the trash icon next to a question, the question will be removed.
@@ -110,7 +110,7 @@ def create_app(test_config=None):
 
       query.delete()
       question_query = Question.query.order_by(Question.id).all()
-      paginated_data = pagination(request, question_query)
+      paginated_data = pagination(question_query)
       question_query_count = len(question_query)
 
       return jsonify({
@@ -123,7 +123,7 @@ def create_app(test_config=None):
     except:
       abort(422)
   '''
-  @TODO: 
+  @Done: 
   Create an endpoint to POST a new question, 
   which will require the question and answer text, 
   category, and difficulty score.
@@ -180,7 +180,7 @@ def create_app(test_config=None):
 
 
   '''
-  @TODO: 
+  @Done: 
   Create a POST endpoint to get questions based on a search term. 
   It should return any questions for whom the search term 
   is a substring of the question. 
@@ -206,7 +206,7 @@ def create_app(test_config=None):
       try:
         query = Question.query.order_by(Question.id).filter(
                 Question.question.ilike(f'%{request_data["search_term"]}%')).all()
-        paginated_data = pagination(request, query)
+        paginated_data = pagination(query)
         query_count = len(query)
 
         return jsonify({
@@ -224,7 +224,7 @@ def create_app(test_config=None):
       abort(422, {'message': v.errors})
 
   '''
-  @TODO: 
+  @Done: 
   Create a GET endpoint to get questions based on category. 
 
   TEST: In the "List" tab / main screen, clicking on one of the 
@@ -236,7 +236,7 @@ def create_app(test_config=None):
   def category_question(category_id):
     query = Question.query.filter(Question.category == category_id).order_by(Question.id).all()
     query_count = len(query)
-    paginated_data = pagination(request, query, list_per_page=query_count)
+    paginated_data = pagination(query, list_per_page=query_count)
 
     if len(paginated_data) == 0:
       abort(404)
@@ -250,7 +250,7 @@ def create_app(test_config=None):
 
 
   '''
-  @TODO: 
+  @Done: 
   Create a POST endpoint to get questions to play the quiz. 
   This endpoint should take category and previous question parameters 
   and return a random questions within the given category, 
@@ -304,7 +304,7 @@ def create_app(test_config=None):
       abort(422, {'message': v.errors})
 
   '''
-  @TODO: 
+  @Done: 
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
